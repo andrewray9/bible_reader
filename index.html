@@ -1,0 +1,1449 @@
+<!DOCTYPE html>
+<html lang="en" data-theme="dark">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <title>Bible Reader</title>
+  <link rel="preconnect" href="https://fonts.googleapis.com" />
+  <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin />
+  <link href="https://fonts.googleapis.com/css2?family=Cormorant+Garamond:ital,wght@0,300;0,400;0,500;0,600;1,300;1,400&family=Josefin+Sans:wght@300;400;600&display=swap" rel="stylesheet" />
+
+  <style>
+    :root[data-theme="dark"] {
+      --bg: #0c0f14;
+      --bg2: #121820;
+      --bg3: #18202c;
+      --border: #1e2d3d;
+      --text: #dce8f0;
+      --text-muted: #6a82a0;
+      --text-dim: #384d65;
+      --accent: #7eb8d4;
+      --accent-dim: rgba(126, 184, 212, 0.10);
+      --accent-glow: rgba(126, 184, 212, 0.22);
+      --verse-num: #a8cfe0;
+      --pill-bg: #1a2535;
+      --pill-active: #7eb8d4;
+      --pill-active-text: #0c0f14;
+      --shadow: 0 8px 32px rgba(0,0,0,0.6);
+      --scrollbar: #1e2d3d;
+    }
+
+    :root[data-theme="light"] {
+      --bg: #eef4f8;
+      --bg2: #f5f9fc;
+      --bg3: #ffffff;
+      --border: #c8dce8;
+      --text: #12202c;
+      --text-muted: #5a7a90;
+      --text-dim: #9ab8cc;
+      --accent: #3a7fa8;
+      --accent-dim: rgba(58, 127, 168, 0.08);
+      --accent-glow: rgba(58, 127, 168, 0.18);
+      --verse-num: #3a7fa8;
+      --pill-bg: #ddeaf2;
+      --pill-active: #3a7fa8;
+      --pill-active-text: #ffffff;
+      --shadow: 0 8px 32px rgba(0,0,0,0.10);
+      --scrollbar: #c8dce8;
+    }
+
+    *, *::before, *::after { box-sizing: border-box; margin: 0; padding: 0; }
+    html { scroll-behavior: smooth; }
+
+    body {
+      font-family: 'Josefin Sans', sans-serif;
+      background: var(--bg);
+      color: var(--text);
+      min-height: 100vh;
+      transition: background 0.3s, color 0.3s;
+    }
+
+    ::-webkit-scrollbar { width: 6px; }
+    ::-webkit-scrollbar-track { background: transparent; }
+    ::-webkit-scrollbar-thumb { background: var(--scrollbar); border-radius: 3px; }
+
+    /* ── Layout ── */
+    .app {
+      display: grid;
+      grid-template-columns: 280px 1fr;
+      grid-template-rows: 60px 1fr;
+      height: 100vh;
+      overflow: hidden;
+      transition: grid-template-columns 0.32s cubic-bezier(0.4,0,0.2,1);
+    }
+
+    .app.sidebar-collapsed {
+      grid-template-columns: 0px 1fr;
+    }
+
+    /* ── Header ── */
+    header {
+      grid-column: 1 / -1;
+      display: flex;
+      align-items: center;
+      justify-content: space-between;
+      padding: 0 20px 0 14px;
+      border-bottom: 1px solid var(--border);
+      background: var(--bg2);
+      position: relative;
+      z-index: 20;
+      gap: 12px;
+    }
+
+    .header-left {
+      display: flex;
+      align-items: center;
+      gap: 10px;
+    }
+
+    /* ── Sidebar Toggle ── */
+    .sidebar-toggle {
+      background: none;
+      border: 1px solid var(--border);
+      color: var(--text-muted);
+      border-radius: 7px;
+      width: 32px;
+      height: 32px;
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      cursor: pointer;
+      flex-shrink: 0;
+      transition: border-color 0.2s, color 0.2s, transform 0.2s;
+    }
+
+    .sidebar-toggle:hover { border-color: var(--accent); color: var(--accent); }
+    .sidebar-toggle:active { transform: scale(0.9); }
+
+    .sidebar-toggle svg {
+      transition: transform 0.32s cubic-bezier(0.4,0,0.2,1);
+    }
+
+    .app.sidebar-collapsed .sidebar-toggle svg {
+      transform: scaleX(-1);
+    }
+
+    .logo {
+      font-family: 'Cormorant Garamond', serif;
+      font-size: 1.25rem;
+      font-weight: 600;
+      letter-spacing: 0.04em;
+      color: var(--accent);
+      white-space: nowrap;
+    }
+
+    .logo span {
+      color: var(--text-muted);
+      font-weight: 300;
+      font-style: italic;
+      font-size: 0.9rem;
+      margin-left: 6px;
+    }
+
+    .header-right {
+      display: flex;
+      align-items: center;
+      gap: 8px;
+      flex-shrink: 0;
+    }
+
+    /* ── Translation dropdown ── */
+    .translation-wrap { position: relative; }
+
+    .translation-btn {
+      background: var(--pill-bg);
+      border: 1px solid var(--border);
+      color: var(--text);
+      border-radius: 8px;
+      padding: 6px 12px;
+      font-family: 'Josefin Sans', sans-serif;
+      font-size: 0.72rem;
+      letter-spacing: 0.1em;
+      cursor: pointer;
+      transition: all 0.2s;
+      display: flex;
+      align-items: center;
+      gap: 6px;
+      white-space: nowrap;
+    }
+
+    .translation-btn:hover { border-color: var(--accent); color: var(--accent); }
+    .translation-btn:active { transform: scale(0.96); }
+
+    .translation-btn .caret {
+      font-size: 0.6rem;
+      opacity: 0.6;
+      transition: transform 0.2s;
+    }
+
+    .translation-btn.open .caret { transform: rotate(180deg); }
+
+    .translation-dropdown {
+      position: absolute;
+      top: calc(100% + 8px);
+      right: 0;
+      width: 290px;
+      background: var(--bg3);
+      border: 1px solid var(--border);
+      border-radius: 10px;
+      box-shadow: var(--shadow);
+      z-index: 100;
+      overflow: hidden;
+      display: none;
+    }
+
+    .translation-dropdown.open {
+      display: block;
+      animation: dropIn 0.18s ease both;
+    }
+
+    @keyframes dropIn {
+      from { opacity: 0; transform: translateY(-6px); }
+      to   { opacity: 1; transform: translateY(0); }
+    }
+
+    .trans-search {
+      padding: 10px 12px;
+      border-bottom: 1px solid var(--border);
+    }
+
+    .trans-search input {
+      width: 100%;
+      background: var(--bg2);
+      border: 1px solid var(--border);
+      color: var(--text);
+      border-radius: 6px;
+      padding: 7px 10px;
+      font-family: 'Josefin Sans', sans-serif;
+      font-size: 0.75rem;
+      outline: none;
+      transition: border-color 0.2s;
+    }
+
+    .trans-search input:focus { border-color: var(--accent); }
+    .trans-search input::placeholder { color: var(--text-dim); }
+
+    .trans-list { max-height: 280px; overflow-y: auto; }
+
+    .trans-group-label {
+      padding: 8px 12px 4px;
+      font-size: 0.58rem;
+      letter-spacing: 0.14em;
+      color: var(--text-dim);
+      border-top: 1px solid var(--border);
+    }
+
+    .trans-group-label:first-child { border-top: none; }
+
+    .trans-item {
+      display: flex;
+      align-items: center;
+      gap: 10px;
+      padding: 8px 12px;
+      cursor: pointer;
+      transition: background 0.15s;
+    }
+
+    .trans-item:hover { background: var(--accent-dim); }
+    .trans-item.active { background: var(--accent-dim); }
+
+    .trans-item .t-abbr {
+      font-size: 0.7rem;
+      font-weight: 600;
+      color: var(--accent);
+      letter-spacing: 0.06em;
+      min-width: 52px;
+    }
+
+    .trans-item .t-name {
+      font-size: 0.74rem;
+      color: var(--text-muted);
+      flex: 1;
+      line-height: 1.3;
+    }
+
+    .trans-item.active .t-name { color: var(--text); }
+
+    /* ── Theme toggle ── */
+    .theme-btn {
+      background: var(--pill-bg);
+      border: 1px solid var(--border);
+      color: var(--text);
+      border-radius: 20px;
+      padding: 6px 12px;
+      font-family: 'Josefin Sans', sans-serif;
+      font-size: 0.7rem;
+      letter-spacing: 0.08em;
+      cursor: pointer;
+      transition: all 0.2s;
+      display: flex;
+      align-items: center;
+      gap: 5px;
+    }
+
+    .theme-btn:hover { border-color: var(--accent); color: var(--accent); }
+    .theme-btn:active { transform: scale(0.95); }
+
+    /* ── Sidebar ── */
+    .sidebar {
+      background: var(--bg2);
+      border-right: 1px solid var(--border);
+      display: flex;
+      flex-direction: column;
+      overflow: hidden;
+      min-width: 0;
+      transition: opacity 0.22s;
+    }
+
+    .app.sidebar-collapsed .sidebar {
+      opacity: 0;
+      pointer-events: none;
+    }
+
+    .sidebar-search {
+      padding: 14px 14px 10px;
+      border-bottom: 1px solid var(--border);
+      flex-shrink: 0;
+    }
+
+    .search-wrap { position: relative; }
+
+    .search-wrap input {
+      width: 100%;
+      background: var(--bg3);
+      border: 1px solid var(--border);
+      color: var(--text);
+      border-radius: 8px;
+      padding: 9px 34px 9px 12px;
+      font-family: 'Josefin Sans', sans-serif;
+      font-size: 0.78rem;
+      letter-spacing: 0.03em;
+      outline: none;
+      transition: border-color 0.2s, box-shadow 0.2s;
+    }
+
+    .search-wrap input:focus {
+      border-color: var(--accent);
+      box-shadow: 0 0 0 3px var(--accent-glow);
+    }
+
+    .search-wrap input::placeholder { color: var(--text-dim); }
+
+    .search-icon {
+      position: absolute;
+      right: 10px;
+      top: 50%;
+      transform: translateY(-50%);
+      color: var(--text-dim);
+      font-size: 0.9rem;
+      pointer-events: none;
+    }
+
+    .testament-tabs {
+      display: flex;
+      padding: 10px 14px 0;
+      gap: 5px;
+      flex-shrink: 0;
+    }
+
+    .tab-btn {
+      flex: 1;
+      background: var(--pill-bg);
+      border: 1px solid transparent;
+      color: var(--text-muted);
+      border-radius: 6px;
+      padding: 6px 0;
+      font-family: 'Josefin Sans', sans-serif;
+      font-size: 0.68rem;
+      letter-spacing: 0.1em;
+      cursor: pointer;
+      transition: all 0.2s;
+    }
+
+    .tab-btn.active {
+      background: var(--accent-dim);
+      border-color: var(--accent);
+      color: var(--accent);
+    }
+
+    .tab-btn:active { transform: scale(0.97); }
+
+    .books-list {
+      flex: 1;
+      overflow-y: auto;
+      padding: 8px 8px 16px;
+    }
+
+    .book-item {
+      padding: 8px 10px;
+      border-radius: 7px;
+      cursor: pointer;
+      transition: all 0.18s;
+      border: 1px solid transparent;
+    }
+
+    .book-item:hover {
+      background: var(--accent-dim);
+      border-color: var(--border);
+    }
+
+    .book-item.active {
+      background: var(--accent-dim);
+      border-color: var(--accent);
+    }
+
+    .book-item:active { transform: scale(0.98); }
+
+    .book-name {
+      font-size: 0.8rem;
+      letter-spacing: 0.02em;
+      color: var(--text);
+    }
+
+    .book-item.active .book-name { color: var(--accent); }
+
+    /* ── Main ── */
+    .main {
+      display: flex;
+      flex-direction: column;
+      overflow: hidden;
+      background: var(--bg);
+      min-width: 0;
+    }
+
+    .chapter-bar {
+      padding: 10px 24px;
+      border-bottom: 1px solid var(--border);
+      background: var(--bg2);
+      display: flex;
+      align-items: center;
+      gap: 10px;
+      flex-shrink: 0;
+    }
+
+    .bar-label {
+      font-size: 0.64rem;
+      letter-spacing: 0.12em;
+      color: var(--text-muted);
+      flex-shrink: 0;
+    }
+
+    .chapter-pills {
+      display: flex;
+      flex-wrap: wrap;
+      gap: 4px;
+      flex: 1;
+    }
+
+    .ch-btn {
+      background: var(--pill-bg);
+      border: 1px solid transparent;
+      color: var(--text-muted);
+      border-radius: 5px;
+      width: 30px;
+      height: 26px;
+      font-family: 'Josefin Sans', sans-serif;
+      font-size: 0.67rem;
+      cursor: pointer;
+      transition: all 0.15s;
+      display: flex;
+      align-items: center;
+      justify-content: center;
+    }
+
+    .ch-btn:hover { border-color: var(--accent); color: var(--accent); }
+    .ch-btn.active { background: var(--pill-active); color: var(--pill-active-text); border-color: var(--pill-active); }
+    .ch-btn:active { transform: scale(0.88); }
+
+    .verse-search-bar {
+      padding: 10px 24px;
+      border-bottom: 1px solid var(--border);
+      background: var(--bg2);
+      display: flex;
+      align-items: center;
+      gap: 10px;
+      flex-shrink: 0;
+    }
+
+    .verse-search-bar input {
+      flex: 1;
+      max-width: 400px;
+      background: var(--bg3);
+      border: 1px solid var(--border);
+      color: var(--text);
+      border-radius: 8px;
+      padding: 8px 14px;
+      font-family: 'Josefin Sans', sans-serif;
+      font-size: 0.78rem;
+      letter-spacing: 0.03em;
+      outline: none;
+      transition: border-color 0.2s, box-shadow 0.2s;
+    }
+
+    .verse-search-bar input:focus {
+      border-color: var(--accent);
+      box-shadow: 0 0 0 3px var(--accent-glow);
+    }
+
+    .verse-search-bar input::placeholder { color: var(--text-dim); }
+
+    .go-btn {
+      background: var(--accent);
+      border: none;
+      color: var(--pill-active-text);
+      border-radius: 8px;
+      padding: 8px 18px;
+      font-family: 'Josefin Sans', sans-serif;
+      font-size: 0.72rem;
+      letter-spacing: 0.1em;
+      cursor: pointer;
+      transition: all 0.2s;
+    }
+
+    .go-btn:hover { opacity: 0.85; }
+    .go-btn:active { transform: scale(0.95); }
+
+    /* ── Content ── */
+    .content {
+      flex: 1;
+      overflow-y: auto;
+      padding: 36px 48px 60px;
+    }
+
+    .book-header {
+      margin-bottom: 28px;
+      padding-bottom: 20px;
+      border-bottom: 1px solid var(--border);
+    }
+
+    .book-header h1 {
+      font-family: 'Cormorant Garamond', serif;
+      font-size: 2.4rem;
+      font-weight: 500;
+      color: var(--text);
+      letter-spacing: 0.02em;
+    }
+
+    .book-header .chapter-label {
+      font-size: 0.67rem;
+      letter-spacing: 0.14em;
+      color: var(--accent);
+      margin-top: 6px;
+    }
+
+    .verses-container { max-width: 720px; }
+
+    .verse-row {
+      display: flex;
+      gap: 14px;
+      margin-bottom: 6px;
+      padding: 8px 10px;
+      border-radius: 6px;
+      border-left: 2px solid transparent;
+      transition: background 0.15s;
+      align-items: flex-start;
+    }
+
+    .verse-row:hover { background: var(--accent-dim); }
+
+    .verse-row.highlighted {
+      background: var(--accent-dim);
+      border-left-color: var(--accent);
+    }
+
+    .v-num {
+      font-family: 'Josefin Sans', sans-serif;
+      font-size: 0.6rem;
+      color: var(--verse-num);
+      letter-spacing: 0.05em;
+      min-width: 22px;
+      text-align: right;
+      padding-top: 5px;
+      flex-shrink: 0;
+      font-weight: 600;
+    }
+
+    .v-text {
+      font-family: 'Cormorant Garamond', serif;
+      font-size: 1.18rem;
+      font-weight: 400;
+      line-height: 1.78;
+      color: var(--text);
+    }
+
+    /* ── States ── */
+    .state-msg {
+      display: flex;
+      flex-direction: column;
+      align-items: center;
+      justify-content: center;
+      height: 100%;
+      gap: 12px;
+      color: var(--text-dim);
+      text-align: center;
+    }
+
+    .state-msg .icon { font-size: 3rem; opacity: 0.35; }
+
+    .state-msg p {
+      font-family: 'Cormorant Garamond', serif;
+      font-size: 1.1rem;
+      font-style: italic;
+    }
+
+    .state-msg small {
+      font-size: 0.67rem;
+      letter-spacing: 0.08em;
+    }
+
+    .loading-dots { display: flex; gap: 6px; margin-top: 8px; }
+
+    .loading-dots span {
+      width: 7px; height: 7px;
+      background: var(--accent);
+      border-radius: 50%;
+      animation: bounce 1.2s infinite ease-in-out;
+    }
+
+    .loading-dots span:nth-child(2) { animation-delay: 0.2s; }
+    .loading-dots span:nth-child(3) { animation-delay: 0.4s; }
+
+    @keyframes bounce {
+      0%, 80%, 100% { transform: translateY(0); opacity: 0.4; }
+      40% { transform: translateY(-8px); opacity: 1; }
+    }
+
+    @keyframes fadeUp {
+      from { opacity: 0; transform: translateY(10px); }
+      to   { opacity: 1; transform: translateY(0); }
+    }
+
+    .fade-in { animation: fadeUp 0.35s ease both; }
+
+    /* ── Search results ── */
+    .search-result-item {
+      padding: 14px 16px;
+      border: 1px solid var(--border);
+      border-radius: 8px;
+      margin-bottom: 10px;
+      cursor: pointer;
+      transition: all 0.18s;
+      background: var(--bg2);
+    }
+
+    .search-result-item:hover { border-color: var(--accent); background: var(--accent-dim); }
+    .search-result-item:active { transform: scale(0.99); }
+
+    .sr-ref {
+      font-size: 0.64rem;
+      letter-spacing: 0.1em;
+      color: var(--accent);
+      margin-bottom: 6px;
+    }
+
+    .sr-text {
+      font-family: 'Cormorant Garamond', serif;
+      font-size: 1rem;
+      line-height: 1.6;
+      color: var(--text);
+    }
+
+    .error-msg {
+      background: rgba(220, 80, 80, 0.1);
+      border: 1px solid rgba(220, 80, 80, 0.3);
+      color: #e08080;
+      border-radius: 8px;
+      padding: 12px 16px;
+      font-size: 0.8rem;
+      line-height: 1.5;
+    }
+
+    /* ── Verse selection ── */
+    .verse-row {
+      cursor: pointer;
+      border-radius: 6px;
+      transition: background 0.15s, box-shadow 0.15s;
+      position: relative;
+    }
+
+    .verse-row:hover {
+      background: var(--accent-dim);
+    }
+
+    .verse-row.selected {
+      background: var(--accent-dim);
+      box-shadow: inset 3px 0 0 var(--accent);
+    }
+
+    .verse-row.selected .v-num {
+      color: var(--accent);
+    }
+
+    .verse-row .select-check {
+      width: 16px;
+      height: 16px;
+      border: 1.5px solid var(--border);
+      border-radius: 50%;
+      background: var(--bg2);
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      opacity: 0;
+      transition: opacity 0.15s, border-color 0.15s, background 0.15s;
+      pointer-events: none;
+      flex-shrink: 0;
+      margin-left: auto;
+      align-self: center;
+    }
+
+    .verse-row:hover .select-check,
+    .verse-row.selected .select-check {
+      opacity: 1;
+    }
+
+    .verse-row.selected .select-check {
+      border-color: var(--accent);
+      background: var(--accent);
+    }
+
+    .verse-row.selected .select-check::after {
+      content: '';
+      width: 5px;
+      height: 8px;
+      border: 1.5px solid var(--bg);
+      border-top: none;
+      border-left: none;
+      transform: rotate(42deg) translateY(-1px);
+      display: block;
+    }
+
+    /* ── Copy toolbar ── */
+    #copyBar {
+      position: fixed;
+      bottom: 24px;
+      left: 50%;
+      transform: translateX(-50%) translateY(80px);
+      background: var(--bg3);
+      border: 1px solid var(--border);
+      border-radius: 40px;
+      padding: 10px 10px 10px 20px;
+      display: flex;
+      align-items: center;
+      gap: 10px;
+      box-shadow: 0 8px 32px rgba(0,0,0,0.5), 0 0 0 1px var(--accent-glow);
+      z-index: 200;
+      transition: transform 0.3s cubic-bezier(0.34, 1.56, 0.64, 1), opacity 0.3s;
+      opacity: 0;
+      pointer-events: none;
+      white-space: nowrap;
+    }
+
+    #copyBar.visible {
+      transform: translateX(-50%) translateY(0);
+      opacity: 1;
+      pointer-events: all;
+    }
+
+    .copy-bar-count {
+      font-size: 0.7rem;
+      letter-spacing: 0.1em;
+      color: var(--text-muted);
+      font-family: 'Josefin Sans', sans-serif;
+    }
+
+    .copy-bar-count strong {
+      color: var(--accent);
+      font-weight: 600;
+    }
+
+    .copy-bar-btn {
+      font-family: 'Josefin Sans', sans-serif;
+      font-size: 0.68rem;
+      letter-spacing: 0.1em;
+      font-weight: 600;
+      border: none;
+      border-radius: 24px;
+      padding: 7px 16px;
+      cursor: pointer;
+      transition: all 0.18s;
+    }
+
+    .copy-bar-btn.primary {
+      background: var(--accent);
+      color: var(--pill-active-text);
+    }
+
+    .copy-bar-btn.primary:hover { filter: brightness(1.1); }
+    .copy-bar-btn.primary:active { transform: scale(0.97); }
+
+    .copy-bar-btn.secondary {
+      background: var(--bg2);
+      color: var(--text-muted);
+      border: 1px solid var(--border);
+    }
+
+    .copy-bar-btn.secondary:hover { color: var(--text); border-color: var(--text-muted); }
+
+    .copy-bar-divider {
+      width: 1px;
+      height: 18px;
+      background: var(--border);
+    }
+
+    /* copy format dropdown */
+    .copy-format-wrap {
+      position: relative;
+    }
+
+    .copy-format-dropdown {
+      position: absolute;
+      bottom: calc(100% + 10px);
+      right: 0;
+      background: var(--bg3);
+      border: 1px solid var(--border);
+      border-radius: 10px;
+      overflow: hidden;
+      box-shadow: 0 8px 24px rgba(0,0,0,0.4);
+      min-width: 220px;
+      display: none;
+    }
+
+    .copy-format-dropdown.open { display: block; }
+
+    .copy-format-opt {
+      padding: 10px 16px;
+      font-size: 0.72rem;
+      letter-spacing: 0.05em;
+      cursor: pointer;
+      transition: background 0.15s;
+      color: var(--text);
+      font-family: 'Josefin Sans', sans-serif;
+    }
+
+    .copy-format-opt small {
+      display: block;
+      color: var(--text-muted);
+      font-size: 0.62rem;
+      margin-top: 2px;
+    }
+
+    .copy-format-opt:hover { background: var(--accent-dim); }
+
+    .copied-toast {
+      position: fixed;
+      bottom: 90px;
+      left: 50%;
+      transform: translateX(-50%) translateY(10px);
+      background: var(--accent);
+      color: var(--pill-active-text);
+      padding: 7px 18px;
+      border-radius: 20px;
+      font-size: 0.7rem;
+      letter-spacing: 0.1em;
+      font-weight: 600;
+      font-family: 'Josefin Sans', sans-serif;
+      opacity: 0;
+      pointer-events: none;
+      z-index: 300;
+      transition: opacity 0.2s, transform 0.2s;
+    }
+
+    .copied-toast.show {
+      opacity: 1;
+      transform: translateX(-50%) translateY(0);
+    }
+  </style>
+</head>
+<body>
+
+<div class="app" id="app">
+
+  <!-- Header -->
+  <header>
+    <div class="header-left">
+      <button class="sidebar-toggle" onclick="toggleSidebar()" title="Toggle sidebar">
+        <svg width="16" height="16" viewBox="0 0 16 16" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round">
+          <rect x="1" y="1" width="14" height="14" rx="2"/>
+          <line x1="5.5" y1="1.5" x2="5.5" y2="14.5"/>
+        </svg>
+      </button>
+      <div class="logo">Bible<span id="logoTrans">NKJV</span></div>
+    </div>
+
+    <div class="header-right">
+      <!-- Translation picker -->
+      <div class="translation-wrap" id="transWrap">
+        <button class="translation-btn" id="transBtn" onclick="toggleTransDropdown()">
+          <span id="transCurrent">NKJV</span>
+          <span class="caret">▾</span>
+        </button>
+        <div class="translation-dropdown" id="transDropdown">
+          <div class="trans-search">
+            <input type="text" id="transSearch" placeholder="Search translations…" oninput="filterTranslations()" />
+          </div>
+          <div class="trans-list" id="transList">
+            <div style="padding:16px;font-size:0.75rem;color:var(--text-dim);text-align:center">Loading…</div>
+          </div>
+        </div>
+      </div>
+
+      <button class="theme-btn" onclick="toggleTheme()">
+        <span id="themeIcon">☀</span>
+        <span id="themeLabel">LIGHT</span>
+      </button>
+    </div>
+  </header>
+
+  <!-- Sidebar -->
+  <aside class="sidebar">
+    <div class="sidebar-search">
+      <div class="search-wrap">
+        <input type="text" id="bookSearch" placeholder="Search books…" oninput="filterBooks()" />
+        <span class="search-icon">⌕</span>
+      </div>
+    </div>
+
+    <div class="testament-tabs">
+      <button class="tab-btn active" id="tab-ot" onclick="setTestament('OT')">OLD</button>
+      <button class="tab-btn" id="tab-nt" onclick="setTestament('NT')">NEW</button>
+      <button class="tab-btn" id="tab-all" onclick="setTestament('ALL')">ALL</button>
+    </div>
+
+    <div class="books-list" id="booksList"></div>
+  </aside>
+
+  <!-- Main -->
+  <main class="main">
+    <div class="chapter-bar">
+      <span class="bar-label">CHAPTER</span>
+      <div class="chapter-pills" id="chapterPills">
+        <span style="font-size:0.72rem;color:var(--text-dim);letter-spacing:0.06em">Select a book</span>
+      </div>
+    </div>
+
+    <div class="verse-search-bar">
+      <input type="text" id="verseInput" placeholder="Go to verse (e.g. John 3:16) or search text…" onkeydown="if(event.key==='Enter') handleVerseSearch()" />
+      <button class="go-btn" onclick="handleVerseSearch()">GO</button>
+    </div>
+
+    <div class="content" id="contentArea">
+      <div class="state-msg">
+        <div class="icon">✦</div>
+        <p>Select a book and chapter to begin reading</p>
+        <small>OR USE THE SEARCH BAR ABOVE TO JUMP TO ANY VERSE</small>
+      </div>
+    </div>
+  </main>
+
+</div>
+
+<!-- Copy Toolbar -->
+<div id="copyBar">
+  <span class="copy-bar-count"><strong id="copyCount">0</strong> VERSE<span id="copyPlural">S</span> SELECTED</span>
+  <div class="copy-bar-divider"></div>
+  <button class="copy-bar-btn secondary" onclick="clearSelection()">CLEAR</button>
+  <div class="copy-format-wrap">
+    <button class="copy-bar-btn primary" id="copyMainBtn" onclick="toggleCopyFormats()">COPY ▾</button>
+    <div class="copy-format-dropdown" id="copyFormats">
+      <div class="copy-format-opt" onclick="copyVerses('reference')">
+        WITH REFERENCE
+        <small>John 3:16 — For God so loved…</small>
+      </div>
+      <div class="copy-format-opt" onclick="copyVerses('text-only')">
+        TEXT ONLY
+        <small>For God so loved the world…</small>
+      </div>
+      <div class="copy-format-opt" onclick="copyVerses('numbered')">
+        NUMBERED
+        <small>¹⁶ For God so loved…</small>
+      </div>
+    </div>
+  </div>
+</div>
+
+<div class="copied-toast" id="copiedToast">COPIED!</div>
+
+<script>
+// ── Bible data ──
+const BOOKS_OT = [
+  {id:1,name:'Genesis'},{id:2,name:'Exodus'},{id:3,name:'Leviticus'},
+  {id:4,name:'Numbers'},{id:5,name:'Deuteronomy'},{id:6,name:'Joshua'},
+  {id:7,name:'Judges'},{id:8,name:'Ruth'},{id:9,name:'1 Samuel'},
+  {id:10,name:'2 Samuel'},{id:11,name:'1 Kings'},{id:12,name:'2 Kings'},
+  {id:13,name:'1 Chronicles'},{id:14,name:'2 Chronicles'},{id:15,name:'Ezra'},
+  {id:16,name:'Nehemiah'},{id:17,name:'Esther'},{id:18,name:'Job'},
+  {id:19,name:'Psalms'},{id:20,name:'Proverbs'},{id:21,name:'Ecclesiastes'},
+  {id:22,name:'Song of Solomon'},{id:23,name:'Isaiah'},{id:24,name:'Jeremiah'},
+  {id:25,name:'Lamentations'},{id:26,name:'Ezekiel'},{id:27,name:'Daniel'},
+  {id:28,name:'Hosea'},{id:29,name:'Joel'},{id:30,name:'Amos'},
+  {id:31,name:'Obadiah'},{id:32,name:'Jonah'},{id:33,name:'Micah'},
+  {id:34,name:'Nahum'},{id:35,name:'Habakkuk'},{id:36,name:'Zephaniah'},
+  {id:37,name:'Haggai'},{id:38,name:'Zechariah'},{id:39,name:'Malachi'}
+];
+
+const BOOKS_NT = [
+  {id:40,name:'Matthew'},{id:41,name:'Mark'},{id:42,name:'Luke'},
+  {id:43,name:'John'},{id:44,name:'Acts'},{id:45,name:'Romans'},
+  {id:46,name:'1 Corinthians'},{id:47,name:'2 Corinthians'},{id:48,name:'Galatians'},
+  {id:49,name:'Ephesians'},{id:50,name:'Philippians'},{id:51,name:'Colossians'},
+  {id:52,name:'1 Thessalonians'},{id:53,name:'2 Thessalonians'},{id:54,name:'1 Timothy'},
+  {id:55,name:'2 Timothy'},{id:56,name:'Titus'},{id:57,name:'Philemon'},
+  {id:58,name:'Hebrews'},{id:59,name:'James'},{id:60,name:'1 Peter'},
+  {id:61,name:'2 Peter'},{id:62,name:'1 John'},{id:63,name:'2 John'},
+  {id:64,name:'3 John'},{id:65,name:'Jude'},{id:66,name:'Revelation'}
+];
+
+const ALL_BOOKS = [...BOOKS_OT, ...BOOKS_NT];
+
+const CHAPTER_COUNTS = {
+  1:50,2:40,3:27,4:36,5:34,6:24,7:21,8:4,9:31,10:24,
+  11:22,12:25,13:29,14:36,15:10,16:13,17:10,18:42,19:150,20:31,
+  21:12,22:8,23:66,24:52,25:5,26:48,27:12,28:14,29:3,30:9,
+  31:1,32:4,33:7,34:3,35:3,36:3,37:2,38:14,39:4,
+  40:28,41:16,42:24,43:21,44:28,45:16,46:16,47:13,48:6,49:6,
+  50:4,51:4,52:5,53:3,54:6,55:4,56:3,57:1,58:13,59:5,
+  60:5,61:3,62:5,63:1,64:1,65:1,66:22
+};
+
+// ── State ──
+let currentTestament  = 'OT';
+let currentBook       = null;
+let currentChapter    = 1;
+let currentTranslation = 'NKJV';
+let allTranslations   = [];
+let sidebarOpen       = true;
+let selectedVerses    = []; // [{verseNum, text, bookName, chapter}]
+
+// ── Init ──
+renderBooks();
+loadTranslations();
+
+// Close dropdown on outside click
+document.addEventListener('click', e => {
+  if (!document.getElementById('transWrap').contains(e.target)) closeTransDropdown();
+});
+
+// ── Sidebar ──
+function toggleSidebar() {
+  sidebarOpen = !sidebarOpen;
+  document.getElementById('app').classList.toggle('sidebar-collapsed', !sidebarOpen);
+}
+
+// ── Translations ──
+async function loadTranslations() {
+  try {
+    const res = await fetch('https://bolls.life/get-translations/');
+    if (!res.ok) throw new Error();
+    const data = await res.json();
+    allTranslations = data;
+    renderTranslations(data);
+  } catch {
+    // Fallback curated English list
+    allTranslations = [
+      {short_name:'NKJV', full_name:'New King James Version',        language:'en'},
+      {short_name:'KJV',  full_name:'King James Version',            language:'en'},
+      {short_name:'ESV',  full_name:'English Standard Version',      language:'en'},
+      {short_name:'NIV',  full_name:'New International Version',     language:'en'},
+      {short_name:'NASB', full_name:'New American Standard Bible',   language:'en'},
+      {short_name:'NLT',  full_name:'New Living Translation',        language:'en'},
+      {short_name:'ASV',  full_name:'American Standard Version',     language:'en'},
+      {short_name:'YLT',  full_name:"Young's Literal Translation",   language:'en'},
+      {short_name:'WEB',  full_name:'World English Bible',           language:'en'},
+      {short_name:'RSV',  full_name:'Revised Standard Version',      language:'en'},
+    ];
+    renderTranslations(allTranslations);
+  }
+}
+
+function renderTranslations(list) {
+  const query = (document.getElementById('transSearch')?.value || '').toLowerCase();
+  const filtered = query
+    ? list.filter(t =>
+        t.short_name.toLowerCase().includes(query) ||
+        (t.full_name || '').toLowerCase().includes(query)
+      )
+    : list;
+
+  const english = filtered.filter(t => t.language === 'en' || (!t.language));
+  const other   = filtered.filter(t => t.language && t.language !== 'en');
+
+  let html = '';
+
+  if (english.length) {
+    if (!query) html += `<div class="trans-group-label">ENGLISH</div>`;
+    english.forEach(t => {
+      const safe = (t.full_name || '').replace(/'/g, '&#39;');
+      html += `<div class="trans-item ${t.short_name === currentTranslation ? 'active' : ''}"
+        onclick="selectTranslation('${t.short_name}')">
+        <span class="t-abbr">${t.short_name}</span>
+        <span class="t-name">${safe}</span>
+      </div>`;
+    });
+  }
+
+  if (other.length) {
+    if (!query) html += `<div class="trans-group-label">OTHER LANGUAGES</div>`;
+    other.forEach(t => {
+      const safe = (t.full_name || '').replace(/'/g, '&#39;');
+      html += `<div class="trans-item ${t.short_name === currentTranslation ? 'active' : ''}"
+        onclick="selectTranslation('${t.short_name}')">
+        <span class="t-abbr">${t.short_name}</span>
+        <span class="t-name">${safe}</span>
+      </div>`;
+    });
+  }
+
+  if (!html) html = `<div style="padding:16px;font-size:0.75rem;color:var(--text-dim);text-align:center">No results</div>`;
+
+  document.getElementById('transList').innerHTML = html;
+}
+
+function filterTranslations() { renderTranslations(allTranslations); }
+
+function toggleTransDropdown() {
+  const btn = document.getElementById('transBtn');
+  const dd  = document.getElementById('transDropdown');
+  const open = dd.classList.toggle('open');
+  btn.classList.toggle('open', open);
+  if (open) setTimeout(() => document.getElementById('transSearch').focus(), 50);
+}
+
+function closeTransDropdown() {
+  document.getElementById('transDropdown').classList.remove('open');
+  document.getElementById('transBtn').classList.remove('open');
+}
+
+function selectTranslation(abbr) {
+  currentTranslation = abbr;
+  document.getElementById('transCurrent').textContent = abbr;
+  document.getElementById('logoTrans').textContent = abbr;
+  closeTransDropdown();
+  renderTranslations(allTranslations);
+  if (currentBook) loadChapter(currentBook.id, currentChapter);
+}
+
+// ── Books ──
+function renderBooks() {
+  const query = document.getElementById('bookSearch').value.toLowerCase();
+  let list = currentTestament === 'OT' ? BOOKS_OT : currentTestament === 'NT' ? BOOKS_NT : ALL_BOOKS;
+  if (query) list = ALL_BOOKS.filter(b => b.name.toLowerCase().includes(query));
+
+  document.getElementById('booksList').innerHTML = list.map(b => `
+    <div class="book-item ${currentBook && currentBook.id === b.id ? 'active' : ''}" onclick="selectBook(${b.id})">
+      <span class="book-name">${b.name}</span>
+    </div>
+  `).join('');
+}
+
+function filterBooks() {
+  renderBooks();
+}
+
+function setTestament(t) {
+  currentTestament = t;
+  document.querySelectorAll('.tab-btn').forEach(b => b.classList.remove('active'));
+  const tabEl = document.getElementById('tab-' + t.toLowerCase());
+  if (tabEl) tabEl.classList.add('active');
+  renderBooks();
+}
+
+function selectBook(id) {
+  currentBook = ALL_BOOKS.find(b => b.id === id);
+  currentChapter = 1;
+  renderBooks();
+  renderChapterPills();
+  loadChapter(id, 1);
+}
+
+function renderChapterPills() {
+  if (!currentBook) return;
+  const count = CHAPTER_COUNTS[currentBook.id] || 1;
+  const pills = document.getElementById('chapterPills');
+  pills.innerHTML = '';
+  for (let i = 1; i <= count; i++) {
+    const btn = document.createElement('button');
+    btn.className = 'ch-btn' + (i === currentChapter ? ' active' : '');
+    btn.textContent = i;
+    btn.dataset.ch = i;
+    btn.onclick = () => { currentChapter = i; selectChapter(i); };
+    pills.appendChild(btn);
+  }
+}
+
+function selectChapter(ch) {
+  currentChapter = ch;
+  document.querySelectorAll('.ch-btn').forEach(b =>
+    b.classList.toggle('active', parseInt(b.dataset.ch) === ch)
+  );
+  if (currentBook) loadChapter(currentBook.id, ch);
+}
+
+// ── API ──
+const API = 'https://bolls.life';
+
+async function loadChapter(bookId, chapter, highlightVerse = null) {
+  showLoading();
+  selectedVerses = [];
+  updateCopyBar();
+  try {
+    const res = await fetch(`${API}/get-chapter/${currentTranslation}/${bookId}/${chapter}/`);
+    if (!res.ok) throw new Error();
+    const data = await res.json();
+    if (!Array.isArray(data) || data.length === 0) throw new Error('empty');
+    renderChapter(data, highlightVerse);
+  } catch {
+    showError(`Could not load <strong>${currentTranslation}</strong> — this translation may not have content here, or there was a network error.`);
+  }
+}
+
+async function searchText(query) {
+  showLoading('Searching…');
+  try {
+    const res = await fetch(`${API}/v2/find/${currentTranslation}/?search=${encodeURIComponent(query)}&match_case=false&match_whole=false&page=1`);
+    if (!res.ok) throw new Error();
+    const data = await res.json();
+    renderSearchResults(data, query);
+  } catch {
+    showError('Search failed. Please try again.');
+  }
+}
+
+// ── Render ──
+function renderChapter(verses, highlightVerse) {
+  const book = currentBook || ALL_BOOKS.find(b => b.id === verses[0]?.book) || {name:''};
+  const content = document.getElementById('contentArea');
+
+  let html = `
+    <div class="book-header fade-in">
+      <h1>${book.name}</h1>
+      <div class="chapter-label">CHAPTER ${currentChapter} · ${currentTranslation}</div>
+    </div>
+    <div class="verses-container fade-in">
+  `;
+
+  verses.forEach(v => {
+    const hl = highlightVerse && v.verse === highlightVerse ? ' highlighted' : '';
+    const text = v.text.replace(/<[^>]+>/g, '');
+    html += `
+      <div class="verse-row${hl}" id="v${v.verse}" onclick="toggleVerseSelection(${v.verse}, this)" data-verse="${v.verse}" data-text="${text.replace(/"/g, '&quot;')}">
+        <span class="v-num">${v.verse}</span>
+        <span class="v-text">${text}</span>
+        <span class="select-check"></span>
+      </div>
+    `;
+  });
+
+  html += '</div>';
+  content.innerHTML = html;
+
+  if (highlightVerse) {
+    setTimeout(() => {
+      const el = document.getElementById('v' + highlightVerse);
+      if (el) el.scrollIntoView({ behavior: 'smooth', block: 'center' });
+    }, 100);
+  } else {
+    content.scrollTop = 0;
+  }
+}
+
+function renderSearchResults(results, query) {
+  const content = document.getElementById('contentArea');
+  if (!results || results.length === 0) {
+    content.innerHTML = `
+      <div class="state-msg fade-in">
+        <div class="icon">∅</div>
+        <p>No results found for "${query}"</p>
+        <small>TRY DIFFERENT KEYWORDS OR SWITCH TRANSLATION</small>
+      </div>
+    `;
+    return;
+  }
+
+  let html = `
+    <div class="book-header fade-in">
+      <h1 style="font-size:1.6rem">Search Results</h1>
+      <div class="chapter-label">${results.length} VERSE${results.length!==1?'S':''} · "${query.toUpperCase()}" · ${currentTranslation}</div>
+    </div>
+    <div class="verses-container fade-in">
+  `;
+
+  results.forEach(v => {
+    const bookObj = ALL_BOOKS.find(b => b.id === v.book) || {name:'Unknown'};
+    const text = v.text.replace(/<[^>]+>/g, '');
+    html += `
+      <div class="search-result-item" onclick="goToVerse(${v.book},${v.chapter},${v.verse})">
+        <div class="sr-ref">${bookObj.name.toUpperCase()} ${v.chapter}:${v.verse}</div>
+        <div class="sr-text">${text}</div>
+      </div>
+    `;
+  });
+
+  html += '</div>';
+  content.innerHTML = html;
+  content.scrollTop = 0;
+}
+
+function goToVerse(bookId, chapter, verse) {
+  currentBook = ALL_BOOKS.find(b => b.id === bookId);
+  currentChapter = chapter;
+  renderBooks();
+  renderChapterPills();
+  loadChapter(bookId, chapter, verse);
+}
+
+function showLoading(msg = 'Loading…') {
+  document.getElementById('contentArea').innerHTML = `
+    <div class="state-msg">
+      <p style="font-style:normal;font-size:0.72rem;letter-spacing:0.12em;color:var(--text-muted)">${msg.toUpperCase()}</p>
+      <div class="loading-dots"><span></span><span></span><span></span></div>
+    </div>
+  `;
+}
+
+function showError(msg) {
+  document.getElementById('contentArea').innerHTML = `
+    <div style="padding:40px 28px"><div class="error-msg">${msg}</div></div>
+  `;
+}
+
+// ── Verse / search ──
+function handleVerseSearch() {
+  const raw = document.getElementById('verseInput').value.trim();
+  if (!raw) return;
+
+  const refMatch = raw.match(/^(.+?)\s+(\d+)(?::(\d+))?/i);
+  if (refMatch) {
+    const bookName = refMatch[1].trim().toLowerCase();
+    const chapter  = parseInt(refMatch[2]);
+    const verse    = refMatch[3] ? parseInt(refMatch[3]) : null;
+
+    const book = ALL_BOOKS.find(b =>
+      b.name.toLowerCase().startsWith(bookName) || b.name.toLowerCase() === bookName
+    );
+
+    if (book) {
+      currentBook = book;
+      currentChapter = chapter;
+      renderBooks();
+      renderChapterPills();
+      loadChapter(book.id, chapter, verse);
+      document.getElementById('verseInput').value = '';
+      return;
+    }
+  }
+
+  searchText(raw);
+  document.getElementById('verseInput').value = '';
+}
+
+// ── Theme ──
+function toggleTheme() {
+  const html = document.documentElement;
+  const isDark = html.getAttribute('data-theme') === 'dark';
+  html.setAttribute('data-theme', isDark ? 'light' : 'dark');
+  document.getElementById('themeIcon').textContent = isDark ? '☽' : '☀';
+  document.getElementById('themeLabel').textContent = isDark ? 'DARK' : 'LIGHT';
+}
+
+// ── Verse Selection ──
+function toggleVerseSelection(verseNum, el) {
+  const book = currentBook || {name: ''};
+  const text = el.dataset.text;
+  const key = `${book.name}__${currentChapter}__${verseNum}`;
+
+  const idx = selectedVerses.findIndex(v => v.key === key);
+  if (idx === -1) {
+    selectedVerses.push({ key, verseNum, text, bookName: book.name, chapter: currentChapter });
+    el.classList.add('selected');
+  } else {
+    selectedVerses.splice(idx, 1);
+    el.classList.remove('selected');
+  }
+
+  updateCopyBar();
+}
+
+function updateCopyBar() {
+  const bar = document.getElementById('copyBar');
+  const countEl = document.getElementById('copyCount');
+  const pluralEl = document.getElementById('copyPlural');
+  const n = selectedVerses.length;
+  countEl.textContent = n;
+  pluralEl.textContent = n === 1 ? '' : 'S';
+  if (n > 0) {
+    bar.classList.add('visible');
+  } else {
+    bar.classList.remove('visible');
+    closeCopyFormats();
+  }
+}
+
+function clearSelection() {
+  selectedVerses = [];
+  document.querySelectorAll('.verse-row.selected').forEach(el => el.classList.remove('selected'));
+  updateCopyBar();
+}
+
+function toggleCopyFormats() {
+  document.getElementById('copyFormats').classList.toggle('open');
+}
+
+function closeCopyFormats() {
+  document.getElementById('copyFormats').classList.remove('open');
+}
+
+// Close format dropdown on outside click
+document.addEventListener('click', e => {
+  if (!document.getElementById('copyBar').contains(e.target)) closeCopyFormats();
+});
+
+const SUPERSCRIPTS = {'0':'⁰','1':'¹','2':'²','3':'³','4':'⁴','5':'⁵','6':'⁶','7':'⁷','8':'⁸','9':'⁹'};
+function toSuperscript(n) { return String(n).split('').map(d => SUPERSCRIPTS[d] || d).join(''); }
+
+function copyVerses(format) {
+  closeCopyFormats();
+  if (selectedVerses.length === 0) return;
+
+  // Sort by chapter then verse number
+  const sorted = [...selectedVerses].sort((a, b) =>
+    a.chapter !== b.chapter ? a.chapter - b.chapter : a.verseNum - b.verseNum
+  );
+
+  let lines = [];
+  if (format === 'reference') {
+    lines = sorted.map(v => `${v.bookName} ${v.chapter}:${v.verseNum} — ${v.text}`);
+    lines.push(`(${currentTranslation})`);
+  } else if (format === 'text-only') {
+    lines = sorted.map(v => v.text);
+  } else if (format === 'numbered') {
+    lines = sorted.map(v => `${toSuperscript(v.verseNum)} ${v.text}`);
+    const first = sorted[0];
+    const last = sorted[sorted.length - 1];
+    const ref = first.bookName + ' ' + first.chapter + ':' + first.verseNum +
+      (sorted.length > 1 ? (first.chapter === last.chapter ? '–' + last.verseNum : '–' + last.chapter + ':' + last.verseNum) : '') +
+      ' (' + currentTranslation + ')';
+    lines.push('\n— ' + ref);
+  }
+
+  const text = lines.join('\n');
+  navigator.clipboard.writeText(text).then(() => showCopiedToast()).catch(() => {
+    const ta = document.createElement('textarea');
+    ta.value = text;
+    ta.style.position = 'fixed';
+    ta.style.opacity = '0';
+    document.body.appendChild(ta);
+    ta.select();
+    document.execCommand('copy');
+    document.body.removeChild(ta);
+    showCopiedToast();
+  });
+}
+
+function showCopiedToast() {
+  const toast = document.getElementById('copiedToast');
+  toast.classList.add('show');
+  setTimeout(() => toast.classList.remove('show'), 1800);
+}
+</script>
+</body>
+</html>
