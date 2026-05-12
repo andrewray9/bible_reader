@@ -8,6 +8,8 @@
   <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin />
   <link href="https://fonts.googleapis.com/css2?family=Cormorant+Garamond:ital,wght@0,300;0,400;0,500;0,600;1,300;1,400&family=Josefin+Sans:wght@300;400;600&display=swap" rel="stylesheet" />
 
+  <script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2"></script>
+
   <style>
     :root[data-theme="dark"] {
       --bg: #0c0f14;
@@ -821,6 +823,363 @@
         right: auto;
       }
     }
+
+    /* ── Auth Button ── */
+    .auth-btn {
+      background: var(--pill-bg);
+      border: 1px solid var(--border);
+      color: var(--text-muted);
+      border-radius: 8px;
+      padding: 6px 12px;
+      font-family: 'Josefin Sans', sans-serif;
+      font-size: 0.7rem;
+      letter-spacing: 0.08em;
+      cursor: pointer;
+      transition: all 0.2s;
+      display: flex;
+      align-items: center;
+      gap: 6px;
+      white-space: nowrap;
+      flex-shrink: 0;
+    }
+    .auth-btn:hover { border-color: var(--accent); color: var(--accent); }
+    .auth-btn:active { transform: scale(0.96); }
+
+    /* Avatar button when signed in */
+    .avatar-btn {
+      background: var(--accent-dim);
+      border: 1px solid var(--accent);
+      color: var(--accent);
+      border-radius: 50%;
+      width: 32px;
+      height: 32px;
+      font-family: 'Josefin Sans', sans-serif;
+      font-size: 0.72rem;
+      font-weight: 600;
+      letter-spacing: 0.04em;
+      cursor: pointer;
+      transition: all 0.2s;
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      flex-shrink: 0;
+      position: relative;
+    }
+    .avatar-btn:hover { background: var(--accent); color: var(--pill-active-text); }
+
+    /* User dropdown */
+    .user-menu-wrap { position: relative; }
+    .user-dropdown {
+      position: absolute;
+      top: calc(100% + 10px);
+      right: 0;
+      width: 220px;
+      background: var(--bg3);
+      border: 1px solid var(--border);
+      border-radius: 10px;
+      box-shadow: var(--shadow);
+      z-index: 100;
+      overflow: hidden;
+      display: none;
+    }
+    .user-dropdown.open { display: block; animation: dropIn 0.18s ease both; }
+    .user-dropdown-email {
+      padding: 12px 14px;
+      font-size: 0.68rem;
+      color: var(--text-muted);
+      letter-spacing: 0.04em;
+      border-bottom: 1px solid var(--border);
+      overflow: hidden;
+      text-overflow: ellipsis;
+      white-space: nowrap;
+    }
+    .user-dropdown-item {
+      padding: 10px 14px;
+      font-size: 0.72rem;
+      letter-spacing: 0.06em;
+      color: var(--text);
+      cursor: pointer;
+      transition: background 0.15s;
+      display: flex;
+      align-items: center;
+      gap: 8px;
+    }
+    .user-dropdown-item:hover { background: var(--accent-dim); }
+    .user-dropdown-item.danger { color: #e08080; }
+    .user-dropdown-item.danger:hover { background: rgba(220,80,80,0.08); }
+
+    /* ── Auth Modal Overlay ── */
+    .auth-overlay {
+      position: fixed;
+      inset: 0;
+      background: rgba(0,0,0,0.6);
+      backdrop-filter: blur(4px);
+      z-index: 500;
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      padding: 20px;
+      opacity: 0;
+      pointer-events: none;
+      transition: opacity 0.22s;
+    }
+    .auth-overlay.open {
+      opacity: 1;
+      pointer-events: all;
+    }
+
+    .auth-modal {
+      background: var(--bg2);
+      border: 1px solid var(--border);
+      border-radius: 16px;
+      width: 100%;
+      max-width: 380px;
+      box-shadow: var(--shadow);
+      overflow: hidden;
+      transform: translateY(16px) scale(0.97);
+      transition: transform 0.22s cubic-bezier(0.34,1.56,0.64,1);
+    }
+    .auth-overlay.open .auth-modal {
+      transform: translateY(0) scale(1);
+    }
+
+    .auth-modal-header {
+      padding: 24px 24px 0;
+      text-align: center;
+    }
+    .auth-modal-logo {
+      font-family: 'Cormorant Garamond', serif;
+      font-size: 1.6rem;
+      font-weight: 600;
+      color: var(--accent);
+      letter-spacing: 0.04em;
+      margin-bottom: 4px;
+    }
+    .auth-modal-title {
+      font-size: 0.68rem;
+      letter-spacing: 0.14em;
+      color: var(--text-muted);
+      margin-bottom: 20px;
+    }
+    .auth-tabs {
+      display: flex;
+      border-bottom: 1px solid var(--border);
+    }
+    .auth-tab {
+      flex: 1;
+      background: none;
+      border: none;
+      padding: 10px;
+      font-family: 'Josefin Sans', sans-serif;
+      font-size: 0.68rem;
+      letter-spacing: 0.1em;
+      color: var(--text-muted);
+      cursor: pointer;
+      transition: all 0.2s;
+      border-bottom: 2px solid transparent;
+      margin-bottom: -1px;
+    }
+    .auth-tab.active {
+      color: var(--accent);
+      border-bottom-color: var(--accent);
+    }
+
+    .auth-modal-body { padding: 20px 24px 24px; }
+
+    .auth-field { margin-bottom: 14px; }
+    .auth-field label {
+      display: block;
+      font-size: 0.63rem;
+      letter-spacing: 0.1em;
+      color: var(--text-muted);
+      margin-bottom: 6px;
+    }
+    .auth-field input {
+      width: 100%;
+      background: var(--bg3);
+      border: 1px solid var(--border);
+      color: var(--text);
+      border-radius: 8px;
+      padding: 10px 12px;
+      font-family: 'Josefin Sans', sans-serif;
+      font-size: 0.8rem;
+      outline: none;
+      transition: border-color 0.2s, box-shadow 0.2s;
+    }
+    .auth-field input:focus {
+      border-color: var(--accent);
+      box-shadow: 0 0 0 3px var(--accent-glow);
+    }
+    .auth-field input::placeholder { color: var(--text-dim); }
+
+    .auth-submit {
+      width: 100%;
+      background: var(--accent);
+      color: var(--pill-active-text);
+      border: none;
+      border-radius: 8px;
+      padding: 11px;
+      font-family: 'Josefin Sans', sans-serif;
+      font-size: 0.72rem;
+      letter-spacing: 0.1em;
+      font-weight: 600;
+      cursor: pointer;
+      transition: all 0.2s;
+      margin-top: 4px;
+    }
+    .auth-submit:hover { filter: brightness(1.1); }
+    .auth-submit:active { transform: scale(0.98); }
+    .auth-submit:disabled { opacity: 0.5; cursor: not-allowed; filter: none; }
+
+    .auth-msg {
+      margin-top: 12px;
+      padding: 9px 12px;
+      border-radius: 7px;
+      font-size: 0.7rem;
+      letter-spacing: 0.04em;
+      line-height: 1.5;
+      display: none;
+    }
+    .auth-msg.error {
+      display: block;
+      background: rgba(220,80,80,0.1);
+      border: 1px solid rgba(220,80,80,0.3);
+      color: #e08080;
+    }
+    .auth-msg.success {
+      display: block;
+      background: rgba(80,200,120,0.1);
+      border: 1px solid rgba(80,200,120,0.3);
+      color: #60c878;
+    }
+
+    .auth-close {
+      position: absolute;
+      top: 14px;
+      right: 16px;
+      background: none;
+      border: none;
+      color: var(--text-muted);
+      font-size: 1.2rem;
+      cursor: pointer;
+      line-height: 1;
+      padding: 4px;
+      transition: color 0.2s;
+    }
+    .auth-close:hover { color: var(--text); }
+
+    .auth-modal-header { position: relative; }
+
+    .auth-forgot {
+      display: block;
+      text-align: right;
+      font-size: 0.63rem;
+      color: var(--text-muted);
+      letter-spacing: 0.06em;
+      margin-top: -8px;
+      margin-bottom: 14px;
+      cursor: pointer;
+      transition: color 0.2s;
+      background: none;
+      border: none;
+      font-family: 'Josefin Sans', sans-serif;
+      padding: 0;
+    }
+    .auth-forgot:hover { color: var(--accent); }
+
+    @media (max-width: 768px) {
+      .user-dropdown {
+        position: fixed;
+        top: 60px;
+        right: 0;
+        width: 100%;
+        border-radius: 0 0 10px 10px;
+        border-left: none;
+        border-right: none;
+      }
+    }
+
+    /* ── Main Nav Tabs ── */
+    .main-nav { display: flex; gap: 4px; margin-left: 6px; }
+    .nav-tab {
+      background: none; border: none;
+      color: var(--text-muted);
+      font-family: 'Josefin Sans', sans-serif;
+      font-size: 0.68rem; letter-spacing: 0.1em;
+      padding: 4px 10px; border-radius: 6px 6px 0 0;
+      cursor: pointer; transition: all 0.2s;
+      border-bottom: 2px solid transparent;
+    }
+    .nav-tab.active { color: var(--accent); border-bottom-color: var(--accent); }
+    .nav-tab:hover:not(.active) { color: var(--text); }
+
+    /* ── Community Panel ── */
+    .community-panel { flex: 1; overflow-y: auto; background: var(--bg); }
+    .community-inner { max-width: 720px; margin: 0 auto; padding: 36px 48px 80px; }
+    .community-header-bar { margin-bottom: 32px; padding-bottom: 20px; border-bottom: 1px solid var(--border); }
+    .community-title { font-family: 'Cormorant Garamond', serif; font-size: 2.2rem; font-weight: 500; color: var(--text); }
+    .community-subtitle { font-size: 0.68rem; letter-spacing: 0.1em; color: var(--text-muted); margin-top: 6px; }
+
+    .thought-card { background: var(--bg2); border: 1px solid var(--border); border-radius: 12px; padding: 20px; margin-bottom: 18px; transition: border-color 0.2s; }
+    .thought-card:hover { border-color: var(--accent); }
+    .thought-card-meta { display: flex; align-items: center; gap: 10px; margin-bottom: 14px; }
+    .thought-avatar { width: 34px; height: 34px; border-radius: 50%; background: var(--accent-dim); border: 1px solid var(--accent); color: var(--accent); display: flex; align-items: center; justify-content: center; font-size: 0.72rem; font-weight: 600; flex-shrink: 0; }
+    .thought-author { font-size: 0.78rem; font-weight: 600; color: var(--text); letter-spacing: 0.04em; }
+    .thought-date { font-size: 0.62rem; color: var(--text-dim); letter-spacing: 0.06em; }
+    .thought-verses { background: var(--bg3); border-left: 3px solid var(--accent); border-radius: 0 6px 6px 0; padding: 10px 14px; margin-bottom: 12px; }
+    .thought-verse-ref { font-size: 0.62rem; letter-spacing: 0.12em; color: var(--accent); margin-bottom: 6px; }
+    .thought-verse-text { font-family: 'Cormorant Garamond', serif; font-size: 1rem; line-height: 1.65; color: var(--text-muted); }
+    .thought-body { font-family: 'Cormorant Garamond', serif; font-size: 1.08rem; line-height: 1.75; color: var(--text); margin-bottom: 14px; }
+    .thought-actions { display: flex; gap: 10px; align-items: center; }
+    .thought-action-btn { background: none; border: 1px solid var(--border); color: var(--text-muted); border-radius: 6px; padding: 5px 12px; font-family: 'Josefin Sans', sans-serif; font-size: 0.63rem; letter-spacing: 0.08em; cursor: pointer; transition: all 0.18s; }
+    .thought-action-btn:hover { border-color: var(--accent); color: var(--accent); }
+
+    .thought-textarea { width: 100%; background: var(--bg3); border: 1px solid var(--border); color: var(--text); border-radius: 8px; padding: 10px 12px; font-family: 'Cormorant Garamond', serif; font-size: 1.05rem; line-height: 1.65; outline: none; resize: vertical; min-height: 110px; transition: border-color 0.2s, box-shadow 0.2s; }
+    .thought-textarea:focus { border-color: var(--accent); box-shadow: 0 0 0 3px var(--accent-glow); }
+    .thought-textarea::placeholder { color: var(--text-dim); font-style: italic; }
+    .thought-verse-preview { background: var(--bg3); border-left: 3px solid var(--accent); border-radius: 0 6px 6px 0; padding: 10px 14px; max-height: 160px; overflow-y: auto; }
+    .thought-verse-preview .tvp-ref { font-size: 0.62rem; letter-spacing: 0.12em; color: var(--accent); margin-bottom: 6px; }
+    .thought-verse-preview .tvp-text { font-family: 'Cormorant Garamond', serif; font-size: 0.95rem; line-height: 1.6; color: var(--text-muted); }
+
+    .verse-row.has-comments .v-num::after { content: '\2022'; color: var(--accent); font-size: 0.8rem; margin-left: 2px; }
+    .verse-see-thoughts { display: none; font-family: 'Josefin Sans', sans-serif; font-size: 0.58rem; letter-spacing: 0.1em; color: var(--accent); background: var(--accent-dim); border: 1px solid var(--accent); border-radius: 20px; padding: 3px 9px; cursor: pointer; white-space: nowrap; flex-shrink: 0; transition: all 0.15s; }
+    .verse-row.has-comments .verse-see-thoughts { display: inline-flex; align-items: center; gap: 4px; }
+    .verse-see-thoughts:hover { background: var(--accent); color: var(--pill-active-text); }
+
+    .comments-overlay { position: fixed; inset: 0; background: rgba(0,0,0,0.4); backdrop-filter: blur(2px); z-index: 400; opacity: 0; pointer-events: none; transition: opacity 0.22s; }
+    .comments-overlay.open { opacity: 1; pointer-events: all; }
+    .comments-panel { position: absolute; right: 0; top: 0; bottom: 0; width: 420px; max-width: 100vw; background: var(--bg2); border-left: 1px solid var(--border); display: flex; flex-direction: column; transform: translateX(100%); transition: transform 0.28s cubic-bezier(0.4,0,0.2,1); }
+    .comments-overlay.open .comments-panel { transform: translateX(0); }
+    .comments-panel-header { display: flex; align-items: flex-start; justify-content: space-between; padding: 20px 20px 14px; border-bottom: 1px solid var(--border); flex-shrink: 0; }
+    .comments-panel-title { font-family: 'Cormorant Garamond', serif; font-size: 1.3rem; font-weight: 500; color: var(--text); }
+    .comments-panel-sub { font-size: 0.62rem; letter-spacing: 0.1em; color: var(--accent); margin-top: 2px; }
+    .comments-list { flex: 1; overflow-y: auto; padding: 16px; }
+    .comment-item { margin-bottom: 16px; padding-bottom: 16px; border-bottom: 1px solid var(--border); }
+    .comment-item:last-child { border-bottom: none; }
+    .comment-meta { display: flex; align-items: center; gap: 8px; margin-bottom: 6px; }
+    .comment-avatar { width: 26px; height: 26px; border-radius: 50%; background: var(--accent-dim); border: 1px solid var(--accent); color: var(--accent); display: flex; align-items: center; justify-content: center; font-size: 0.62rem; font-weight: 600; flex-shrink: 0; }
+    .comment-author { font-size: 0.72rem; font-weight: 600; color: var(--text); letter-spacing: 0.03em; }
+    .comment-date { font-size: 0.6rem; color: var(--text-dim); letter-spacing: 0.05em; margin-left: auto; }
+    .comment-body { font-family: 'Cormorant Garamond', serif; font-size: 1rem; line-height: 1.65; color: var(--text); padding-left: 34px; }
+    .comment-reply-link { font-size: 0.6rem; letter-spacing: 0.08em; color: var(--text-muted); background: none; border: none; cursor: pointer; padding: 4px 0 0 34px; font-family: 'Josefin Sans', sans-serif; transition: color 0.15s; display: block; }
+    .comment-reply-link:hover { color: var(--accent); }
+    .comment-replies { margin-left: 34px; margin-top: 10px; border-left: 2px solid var(--border); padding-left: 12px; }
+    .comment-replies .comment-item { margin-bottom: 10px; padding-bottom: 10px; }
+    .comment-reply-box { padding: 14px 16px; border-top: 1px solid var(--border); flex-shrink: 0; background: var(--bg2); }
+    .comment-reply-to { font-size: 0.6rem; letter-spacing: 0.08em; color: var(--accent); margin-bottom: 6px; }
+
+    .community-empty { text-align: center; padding: 60px 20px; color: var(--text-dim); }
+    .community-empty .icon { font-size: 2.5rem; margin-bottom: 12px; opacity: 0.4; }
+    .community-empty p { font-family: 'Cormorant Garamond', serif; font-size: 1.1rem; font-style: italic; }
+    .community-empty small { font-size: 0.65rem; letter-spacing: 0.1em; display: block; margin-top: 6px; }
+
+    @media (max-width: 768px) {
+      .community-inner { padding: 24px 20px 80px; }
+      .community-title { font-size: 1.8rem; }
+      .comments-panel { width: 100%; border-left: none; }
+      .main-nav { margin-left: 4px; }
+      .nav-tab { font-size: 0.62rem; padding: 4px 8px; }
+    }
   </style>
 </head>
 <body>
@@ -836,6 +1195,10 @@
         </svg>
       </button>
       <div class="logo">Bible<span id="logoTrans">NKJV</span></div>
+      <div class="main-nav">
+        <button class="nav-tab active" id="navRead" onclick="switchMainTab('read')">READ</button>
+        <button class="nav-tab" id="navCommunity" onclick="switchMainTab('community')">COMMUNITY</button>
+      </div>
     </div>
 
     <div class="header-right">
@@ -858,6 +1221,25 @@
         <span id="themeIcon">☀</span>
         <span id="themeLabel">LIGHT</span>
       </button>
+
+      <!-- Auth: shown when logged out -->
+      <button class="auth-btn" id="signInBtn" onclick="openAuthModal('login')" style="display:none">
+        SIGN IN
+      </button>
+
+      <!-- User menu: shown when logged in -->
+      <div class="user-menu-wrap" id="userMenuWrap" style="display:none">
+        <button class="avatar-btn" id="avatarBtn" onclick="toggleUserMenu()" title="Account"></button>
+        <div class="user-dropdown" id="userDropdown">
+          <div class="user-dropdown-email" id="userEmailDisplay"></div>
+          <div class="user-dropdown-item" onclick="openAuthModal('reset'); closeUserMenu()">
+            ✉ CHANGE PASSWORD
+          </div>
+          <div class="user-dropdown-item danger" onclick="signOut()">
+            ↩ SIGN OUT
+          </div>
+        </div>
+      </div>
     </div>
   </header>
 
@@ -885,6 +1267,18 @@
         <p>Select a book and chapter to begin reading</p>
       </div>
     </div>
+    <!-- Community Feed -->
+    <div class="community-panel" id="communityPanel" style="display:none">
+      <div class="community-inner">
+        <div class="community-header-bar">
+          <h2 class="community-title">Community Thoughts</h2>
+          <p class="community-subtitle">Reflections shared by members of the community</p>
+        </div>
+        <div id="communityFeed" class="community-feed">
+          <div class="state-msg"><div class="loading-dots"><span></span><span></span><span></span></div></div>
+        </div>
+      </div>
+    </div>
   </main>
 
 </div>
@@ -893,6 +1287,7 @@
   <span class="copy-bar-count"><strong id="copyCount">0</strong> VERSE<span id="copyPlural">S</span> SELECTED</span>
   <div class="copy-bar-divider"></div>
   <button class="copy-bar-btn secondary" onclick="clearSelection()">CLEAR</button>
+  <button class="copy-bar-btn secondary" onclick="openThoughtComposer()" id="shareThoughtBtn">✦ SHARE THOUGHT</button>
   <div class="copy-format-wrap">
     <button class="copy-bar-btn primary" id="copyMainBtn" onclick="toggleCopyFormats()">COPY ▾</button>
     <div class="copy-format-dropdown" id="copyFormats">
@@ -912,7 +1307,127 @@
   </div>
 </div>
 
+<!-- ── Thought Composer ── -->
+<div class="auth-overlay" id="thoughtOverlay" onclick="handleThoughtOverlayClick(event)">
+  <div class="auth-modal" style="max-width:520px" id="thoughtModal">
+    <div class="auth-modal-header" style="padding-bottom:16px">
+      <button class="auth-close" onclick="closeThoughtComposer()">✕</button>
+      <div class="auth-modal-logo">Share a Thought</div>
+      <div class="auth-modal-title">YOUR REFLECTION ON THESE VERSES</div>
+    </div>
+    <div class="auth-modal-body" style="padding-top:0">
+      <div id="thoughtVersePreview" class="thought-verse-preview"></div>
+      <div class="auth-field" style="margin-top:14px">
+        <label>YOUR THOUGHT</label>
+        <textarea id="thoughtText" class="thought-textarea" placeholder="What does this passage mean to you?"></textarea>
+      </div>
+      <button class="auth-submit" onclick="submitThought()">POST THOUGHT</button>
+      <div class="auth-msg" id="thoughtMsg"></div>
+    </div>
+  </div>
+</div>
+
+<!-- ── Comments Panel ── -->
+<div class="comments-overlay" id="commentsOverlay" onclick="handleCommentsOverlayClick(event)">
+  <div class="comments-panel" id="commentsPanel">
+    <div class="comments-panel-header">
+      <div>
+        <div class="comments-panel-title" id="commentsPanelTitle">Verse Comments</div>
+        <div class="comments-panel-sub" id="commentsPanelSub"></div>
+      </div>
+      <button class="auth-close" style="position:static" onclick="closeCommentsPanel()">✕</button>
+    </div>
+    <div class="comments-list" id="commentsList">
+      <div class="state-msg"><div class="loading-dots"><span></span><span></span><span></span></div></div>
+    </div>
+    <div class="comment-reply-box" id="commentReplyBox">
+      <textarea id="commentReplyText" class="thought-textarea" style="min-height:70px" placeholder="Add your reply…"></textarea>
+      <div style="display:flex;gap:8px;margin-top:8px">
+        <button class="copy-bar-btn secondary" id="cancelReplyBtn" onclick="cancelReply()" style="display:none">CANCEL</button>
+        <button class="auth-submit" style="margin-top:0;flex:1" onclick="submitComment()">POST</button>
+      </div>
+      <div class="auth-msg" id="commentMsg"></div>
+    </div>
+  </div>
+</div>
+
 <div class="copied-toast" id="copiedToast">COPIED!</div>
+
+<!-- ── Auth Modal ── -->
+<div class="auth-overlay" id="authOverlay" onclick="handleOverlayClick(event)">
+  <div class="auth-modal" id="authModal">
+    <div class="auth-modal-header">
+      <button class="auth-close" onclick="closeAuthModal()">✕</button>
+      <div class="auth-modal-logo">Bible</div>
+      <div class="auth-modal-title" id="authModalSubtitle">YOUR ACCOUNT</div>
+      <div class="auth-tabs" id="authTabs">
+        <button class="auth-tab active" id="tabLogin" onclick="switchAuthTab('login')">SIGN IN</button>
+        <button class="auth-tab" id="tabSignup" onclick="switchAuthTab('signup')">CREATE ACCOUNT</button>
+      </div>
+    </div>
+    <div class="auth-modal-body">
+
+      <!-- Login form -->
+      <div id="formLogin">
+        <div class="auth-field">
+          <label>EMAIL</label>
+          <input type="email" id="loginEmail" placeholder="you@example.com" autocomplete="email" />
+        </div>
+        <div class="auth-field">
+          <label>PASSWORD</label>
+          <input type="password" id="loginPassword" placeholder="••••••••" autocomplete="current-password" />
+        </div>
+        <button class="auth-forgot" onclick="switchAuthTab('reset')">Forgot password?</button>
+        <button class="auth-submit" onclick="handleLogin()">SIGN IN</button>
+        <div class="auth-msg" id="loginMsg"></div>
+      </div>
+
+      <!-- Signup form -->
+      <div id="formSignup" style="display:none">
+        <div style="display:grid;grid-template-columns:1fr 1fr;gap:10px">
+          <div class="auth-field">
+            <label>FIRST NAME</label>
+            <input type="text" id="signupFirst" placeholder="Jane" autocomplete="given-name" />
+          </div>
+          <div class="auth-field">
+            <label>LAST NAME</label>
+            <input type="text" id="signupLast" placeholder="Doe" autocomplete="family-name" />
+          </div>
+        </div>
+        <div class="auth-field">
+          <label>USERNAME</label>
+          <input type="text" id="signupUsername" placeholder="janedoe123" autocomplete="username" oninput="sanitizeUsername(this)" />
+          <div style="font-size:0.6rem;color:var(--text-dim);margin-top:4px;letter-spacing:0.06em">Letters, numbers, and underscores only</div>
+        </div>
+        <div class="auth-field">
+          <label>EMAIL</label>
+          <input type="email" id="signupEmail" placeholder="you@example.com" autocomplete="email" />
+        </div>
+        <div class="auth-field">
+          <label>PASSWORD</label>
+          <input type="password" id="signupPassword" placeholder="Min. 6 characters" autocomplete="new-password" />
+        </div>
+        <div class="auth-field">
+          <label>CONFIRM PASSWORD</label>
+          <input type="password" id="signupConfirm" placeholder="••••••••" autocomplete="new-password" />
+        </div>
+        <button class="auth-submit" onclick="handleSignup()">CREATE ACCOUNT</button>
+        <div class="auth-msg" id="signupMsg"></div>
+      </div>
+
+      <!-- Reset password form -->
+      <div id="formReset" style="display:none">
+        <div class="auth-field">
+          <label>EMAIL</label>
+          <input type="email" id="resetEmail" placeholder="you@example.com" autocomplete="email" />
+        </div>
+        <button class="auth-submit" onclick="handleReset()">SEND RESET LINK</button>
+        <div class="auth-msg" id="resetMsg"></div>
+      </div>
+
+    </div>
+  </div>
+</div>
 
 <script>
 // ── Bible data ──
@@ -1184,11 +1699,11 @@ async function loadChapter(bookId, chapter, highlightVerse = null) {
   selectedVerses = [];
   updateCopyBar();
 
-  // MOBILE: Auto-hide header and collapse sidebar when a chapter is selected
+  // MOBILE: Collapse sidebar when a chapter is selected, but keep header visible
   if (window.innerWidth <= 768) {
     sidebarOpen = false;
     document.getElementById('app').classList.add('sidebar-collapsed');
-    document.getElementById('app').classList.add('reading-mode');
+    document.getElementById('app').classList.remove('reading-mode');
   }
 
   try {
@@ -1238,6 +1753,9 @@ function renderChapter(verses, highlightVerse) {
   } else {
     content.scrollTop = 0;
   }
+
+  // Mark verses that have community thoughts (deferred so DOM is ready)
+  setTimeout(() => markVersesWithThoughts(book.name, currentChapter), 300);
 }
 
 function showLoading(msg = 'Loading…') {
@@ -1399,6 +1917,611 @@ function handleSwipe() {
       toggleSidebar();
     }
   }
+}
+
+// ── Supabase Auth ──
+const SUPABASE_URL  = 'https://ehrdezklafzikeidxxso.supabase.co';
+const SUPABASE_ANON = 'eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6ImVocmRlemtsYWZ6aWtlaWR4eHNvIiwicm9sZSI6ImFub24iLCJpYXQiOjE3Nzg1NTA2NTAsImV4cCI6MjA5NDEyNjY1MH0.y6VKliXruduNJR5tzAirNlusOCuDa8vdgCA23Cj0UEc';
+const { createClient } = supabase;
+const sb = createClient(SUPABASE_URL, SUPABASE_ANON);
+
+let currentUser = null;
+let currentProfile = null;
+
+function getInitials(email) {
+  if (!email) return '?';
+  return email.charAt(0).toUpperCase();
+}
+
+async function loadProfile(user) {
+  if (!user) return null;
+  const { data } = await sb.from('profiles').select('*').eq('id', user.id).single();
+  return data;
+}
+
+function updateAuthUI(user, profile) {
+  currentUser = user;
+  currentProfile = profile || null;
+  const signInBtn     = document.getElementById('signInBtn');
+  const userMenuWrap  = document.getElementById('userMenuWrap');
+  const avatarBtn     = document.getElementById('avatarBtn');
+  const userEmailDisp = document.getElementById('userEmailDisplay');
+
+  if (user) {
+    signInBtn.style.display    = 'none';
+    userMenuWrap.style.display = 'flex';
+    const initials = profile
+      ? (profile.first_name.charAt(0) + profile.last_name.charAt(0)).toUpperCase()
+      : getInitials(user.email);
+    avatarBtn.textContent = initials;
+    const displayName = profile ? profile.first_name + ' ' + profile.last_name : user.email;
+    userEmailDisp.innerHTML = '<strong style="display:block;color:var(--text);font-size:0.76rem">' + displayName + '</strong>' + user.email;
+  } else {
+    signInBtn.style.display    = 'flex';
+    userMenuWrap.style.display = 'none';
+  }
+}
+
+// Listen for auth state changes
+sb.auth.onAuthStateChange(async (_event, session) => {
+  const user = session?.user ?? null;
+  const profile = user ? await loadProfile(user) : null;
+  updateAuthUI(user, profile);
+});
+
+// Init: check current session
+(async () => {
+  const { data } = await sb.auth.getSession();
+  const user = data.session?.user ?? null;
+  const profile = user ? await loadProfile(user) : null;
+  updateAuthUI(user, profile);
+  document.getElementById('signInBtn').style.display = currentUser ? 'none' : 'flex';
+})();
+
+// ── Auth Modal ──
+let currentAuthTab = 'login';
+
+function openAuthModal(tab = 'login') {
+  switchAuthTab(tab);
+  document.getElementById('authOverlay').classList.add('open');
+  closeUserMenu();
+}
+
+function closeAuthModal() {
+  document.getElementById('authOverlay').classList.remove('open');
+  clearAuthMessages();
+}
+
+function handleOverlayClick(e) {
+  if (e.target === document.getElementById('authOverlay')) closeAuthModal();
+}
+
+function clearAuthMessages() {
+  ['loginMsg','signupMsg','resetMsg'].forEach(id => {
+    const el = document.getElementById(id);
+    el.className = 'auth-msg';
+    el.textContent = '';
+  });
+}
+
+function switchAuthTab(tab) {
+  currentAuthTab = tab;
+  clearAuthMessages();
+
+  const tabs    = document.getElementById('authTabs');
+  const subtitle = document.getElementById('authModalSubtitle');
+  const forms   = { login: 'formLogin', signup: 'formSignup', reset: 'formReset' };
+
+  Object.keys(forms).forEach(k => {
+    document.getElementById(forms[k]).style.display = k === tab ? 'block' : 'none';
+  });
+
+  document.getElementById('tabLogin')?.classList.toggle('active', tab === 'login');
+  document.getElementById('tabSignup')?.classList.toggle('active', tab === 'signup');
+
+  if (tab === 'reset') {
+    tabs.style.display = 'none';
+    subtitle.textContent = 'RESET PASSWORD';
+  } else {
+    tabs.style.display = 'flex';
+    subtitle.textContent = 'YOUR ACCOUNT';
+  }
+}
+
+function showAuthMsg(id, type, text) {
+  const el = document.getElementById(id);
+  el.className = 'auth-msg ' + type;
+  el.textContent = text;
+}
+
+function setSubmitLoading(formId, loading) {
+  const btn = document.querySelector(`#${formId} .auth-submit`);
+  if (btn) { btn.disabled = loading; btn.textContent = loading ? 'PLEASE WAIT…' : btn.dataset.label; }
+}
+
+async function handleLogin() {
+  const email    = document.getElementById('loginEmail').value.trim();
+  const password = document.getElementById('loginPassword').value;
+  if (!email || !password) return showAuthMsg('loginMsg', 'error', 'Please fill in all fields.');
+
+  const btn = document.querySelector('#formLogin .auth-submit');
+  btn.disabled = true; btn.textContent = 'SIGNING IN…';
+
+  const { error } = await sb.auth.signInWithPassword({ email, password });
+
+  btn.disabled = false; btn.textContent = 'SIGN IN';
+
+  if (error) {
+    showAuthMsg('loginMsg', 'error', error.message);
+  } else {
+    closeAuthModal();
+  }
+}
+
+function sanitizeUsername(input) {
+  input.value = input.value.replace(/[^a-zA-Z0-9_]/g, '');
+}
+
+async function handleSignup() {
+  const firstName = document.getElementById('signupFirst').value.trim();
+  const lastName  = document.getElementById('signupLast').value.trim();
+  const username  = document.getElementById('signupUsername').value.trim();
+  const email     = document.getElementById('signupEmail').value.trim();
+  const password  = document.getElementById('signupPassword').value;
+  const confirm   = document.getElementById('signupConfirm').value;
+
+  if (!firstName || !lastName)         return showAuthMsg('signupMsg', 'error', 'Please enter your first and last name.');
+  if (!username)                        return showAuthMsg('signupMsg', 'error', 'Please choose a username.');
+  if (username.length < 3)             return showAuthMsg('signupMsg', 'error', 'Username must be at least 3 characters.');
+  if (!/^[a-zA-Z0-9_]+$/.test(username)) return showAuthMsg('signupMsg', 'error', 'Username can only contain letters, numbers, and underscores.');
+  if (!email || !password || !confirm) return showAuthMsg('signupMsg', 'error', 'Please fill in all fields.');
+  if (password.length < 6)             return showAuthMsg('signupMsg', 'error', 'Password must be at least 6 characters.');
+  if (password !== confirm)            return showAuthMsg('signupMsg', 'error', 'Passwords do not match.');
+
+  const btn = document.querySelector('#formSignup .auth-submit');
+  btn.disabled = true; btn.textContent = 'CHECKING USERNAME…';
+
+  // Check username uniqueness before creating account
+  const { data: existing } = await sb
+    .from('profiles')
+    .select('id')
+    .eq('username', username.toLowerCase())
+    .maybeSingle();
+
+  if (existing) {
+    btn.disabled = false; btn.textContent = 'CREATE ACCOUNT';
+    return showAuthMsg('signupMsg', 'error', 'That username is already taken. Please choose another.');
+  }
+
+  btn.textContent = 'CREATING…';
+
+  const { data, error } = await sb.auth.signUp({
+    email, password,
+    options: { data: { first_name: firstName, last_name: lastName, username: username.toLowerCase() } }
+  });
+
+  if (!error && data?.user) {
+    await sb.from('profiles').upsert({
+      id: data.user.id,
+      first_name: firstName,
+      last_name: lastName,
+      username: username.toLowerCase(),
+      email: email
+    });
+  }
+
+  btn.disabled = false; btn.textContent = 'CREATE ACCOUNT';
+
+  if (error) {
+    showAuthMsg('signupMsg', 'error', error.message);
+  } else {
+    showAuthMsg('signupMsg', 'success', 'Account created! Check your email to confirm your address, then sign in.');
+  }
+}
+
+async function handleReset() {
+  const email = document.getElementById('resetEmail').value.trim();
+  if (!email) return showAuthMsg('resetMsg', 'error', 'Please enter your email address.');
+
+  const btn = document.querySelector('#formReset .auth-submit');
+  btn.disabled = true; btn.textContent = 'SENDING…';
+
+  const { error } = await sb.auth.resetPasswordForEmail(email);
+
+  btn.disabled = false; btn.textContent = 'SEND RESET LINK';
+
+  if (error) {
+    showAuthMsg('resetMsg', 'error', error.message);
+  } else {
+    showAuthMsg('resetMsg', 'success', 'Reset link sent! Check your inbox.');
+  }
+}
+
+async function signOut() {
+  await sb.auth.signOut();
+  closeUserMenu();
+}
+
+// ── User dropdown ──
+function toggleUserMenu() {
+  document.getElementById('userDropdown').classList.toggle('open');
+}
+
+function closeUserMenu() {
+  document.getElementById('userDropdown').classList.remove('open');
+}
+
+document.addEventListener('click', e => {
+  const wrap = document.getElementById('userMenuWrap');
+  if (wrap && !wrap.contains(e.target)) closeUserMenu();
+});
+
+// keyboard close
+document.addEventListener('keydown', e => {
+  if (e.key === 'Escape') { closeAuthModal(); closeUserMenu(); closeCommentsPanel(); closeThoughtComposer(); }
+});
+
+// ── Main tab switching ──
+let currentMainTab = 'read';
+function switchMainTab(tab) {
+  currentMainTab = tab;
+  document.getElementById('navRead').classList.toggle('active', tab === 'read');
+  document.getElementById('navCommunity').classList.toggle('active', tab === 'community');
+  document.getElementById('contentArea').style.display = tab === 'read' ? '' : 'none';
+  document.getElementById('communityPanel').style.display = tab === 'community' ? '' : 'none';
+  // sidebar only shown on read tab on mobile
+  if (tab === 'community') {
+    if (window.innerWidth <= 768) {
+      document.getElementById('app').classList.add('sidebar-collapsed');
+      sidebarOpen = false;
+    }
+    loadCommunityFeed();
+  }
+}
+
+// ── Thought Composer ──
+function openThoughtComposer() {
+  if (!currentUser) { openAuthModal('login'); return; }
+  if (selectedVerses.length === 0) return;
+
+  const sorted = [...selectedVerses].sort((a, b) =>
+    a.chapter !== b.chapter ? a.chapter - b.chapter : a.verseNum - b.verseNum
+  );
+
+  const book = sorted[0].bookName;
+  const ch   = sorted[0].chapter;
+  const nums = sorted.map(v => v.verseNum);
+  const ref  = book + ' ' + ch + ':' + nums.join(', ');
+
+  const verseLines = sorted.map(v =>
+    '<sup style="font-size:0.7em;color:var(--accent)">' + v.verseNum + '</sup> ' + v.text
+  ).join('<br>');
+
+  document.getElementById('thoughtVersePreview').innerHTML =
+    '<div class="tvp-ref">' + ref + '</div><div class="tvp-text">' + verseLines + '</div>';
+  document.getElementById('thoughtText').value = '';
+  document.getElementById('thoughtMsg').className = 'auth-msg';
+  document.getElementById('thoughtMsg').textContent = '';
+  document.getElementById('thoughtOverlay').classList.add('open');
+}
+
+function closeThoughtComposer() {
+  document.getElementById('thoughtOverlay').classList.remove('open');
+}
+
+function handleThoughtOverlayClick(e) {
+  if (e.target === document.getElementById('thoughtOverlay')) closeThoughtComposer();
+}
+
+async function submitThought() {
+  if (!currentUser) return;
+  const text = document.getElementById('thoughtText').value.trim();
+  if (!text) return showAuthMsg('thoughtMsg', 'error', 'Please write something before posting.');
+
+  const sorted = [...selectedVerses].sort((a, b) =>
+    a.chapter !== b.chapter ? a.chapter - b.chapter : a.verseNum - b.verseNum
+  );
+  const verseRefs = sorted.map(v => ({
+    book: v.bookName,
+    chapter: v.chapter,
+    verse: v.verseNum,
+    text: v.text
+  }));
+
+  const btn = document.querySelector('#thoughtModal .auth-submit');
+  btn.disabled = true; btn.textContent = 'POSTING…';
+
+  const { error } = await sb.from('thoughts').insert({
+    user_id: currentUser.id,
+    thought_text: text,
+    verse_refs: verseRefs,
+    book_name: sorted[0].bookName,
+    chapter: sorted[0].chapter,
+    translation: currentTranslation
+  });
+
+  btn.disabled = false; btn.textContent = 'POST THOUGHT';
+
+  if (error) {
+    showAuthMsg('thoughtMsg', 'error', 'Could not post. Please try again.');
+    console.error(error);
+  } else {
+    // Tag each verse as having comments
+    sorted.forEach(v => {
+      const el = document.getElementById('v' + v.verseNum);
+      if (el) el.classList.add('has-comments');
+    });
+    closeThoughtComposer();
+    clearSelection();
+    showCopiedToast();
+  }
+}
+
+// ── Community Feed ──
+async function loadCommunityFeed() {
+  if (!currentUser) {
+    document.getElementById('communityFeed').innerHTML =
+      '<div class="community-empty"><div class="icon">✦</div><p>Sign in to read community thoughts</p><small>CREATE AN ACCOUNT TO JOIN THE CONVERSATION</small></div>';
+    return;
+  }
+  document.getElementById('communityFeed').innerHTML =
+    '<div class="state-msg"><div class="loading-dots"><span></span><span></span><span></span></div></div>';
+
+  const { data, error } = await sb
+    .from('thoughts')
+    .select('*, profiles(first_name, last_name), thought_comments(count)')
+    .order('created_at', { ascending: false })
+    .limit(40);
+
+  if (error || !data) {
+    document.getElementById('communityFeed').innerHTML =
+      '<div class="community-empty"><p>Could not load thoughts.</p></div>';
+    return;
+  }
+
+  if (data.length === 0) {
+    document.getElementById('communityFeed').innerHTML =
+      '<div class="community-empty"><div class="icon">✦</div><p>No thoughts shared yet</p><small>SELECT VERSES WHILE READING TO SHARE THE FIRST ONE</small></div>';
+    return;
+  }
+
+  document.getElementById('communityFeed').innerHTML = data.map(t => renderThoughtCard(t)).join('');
+}
+
+function renderThoughtCard(t) {
+  const profile = t.profiles;
+  const name = profile ? profile.first_name + ' ' + profile.last_name : 'Anonymous';
+  const initials = profile
+    ? (profile.first_name.charAt(0) + profile.last_name.charAt(0)).toUpperCase()
+    : '?';
+  const date = new Date(t.created_at).toLocaleDateString('en-US', { month: 'short', day: 'numeric', year: 'numeric' });
+  const commentCount = t.thought_comments?.[0]?.count ?? 0;
+
+  const refs = Array.isArray(t.verse_refs) ? t.verse_refs : [];
+  const refLabel = refs.length
+    ? refs[0].book + ' ' + refs[0].chapter + ':' + refs.map(r => r.verse).join(', ') + ' · ' + t.translation
+    : '';
+  const verseText = refs.map(r =>
+    '<sup style="font-size:0.75em;color:var(--accent)">' + r.verse + '</sup> ' + (r.text || '')
+  ).join(' ');
+
+  return `<div class="thought-card fade-in">
+    <div class="thought-card-meta">
+      <div class="thought-avatar">${initials}</div>
+      <div>
+        <div class="thought-author">${name}</div>
+        <div class="thought-date">${date}</div>
+      </div>
+    </div>
+    ${refLabel ? `<div class="thought-verses"><div class="thought-verse-ref">${refLabel}</div><div class="thought-verse-text">${verseText}</div></div>` : ''}
+    <div class="thought-body">${t.thought_text}</div>
+    <div class="thought-actions">
+      <button class="thought-action-btn" onclick="openThoughtComments('${t.id}', '${refLabel.replace(/'/g,"\'")}')">
+        ✦ ${commentCount} REPL${commentCount === 1 ? 'Y' : 'IES'}
+      </button>
+    </div>
+  </div>`;
+}
+
+// ── Comments Panel ──
+let activeThoughtId = null;
+let replyingToId = null;
+
+async function openThoughtComments(thoughtId, refLabel) {
+  if (!currentUser) { openAuthModal('login'); return; }
+  activeThoughtId = thoughtId;
+  replyingToId = null;
+  document.getElementById('commentsPanelSub').textContent = refLabel;
+  document.getElementById('commentReplyText').value = '';
+  document.getElementById('cancelReplyBtn').style.display = 'none';
+  const replyTo = document.getElementById('commentReplyBox').querySelector('.comment-reply-to');
+  if (replyTo) replyTo.remove();
+  document.getElementById('commentsOverlay').classList.add('open');
+  await loadComments(thoughtId);
+}
+
+async function openVerseComments(bookName, chapter, verseNum) {
+  if (!currentUser) { openAuthModal('login'); return; }
+  // Find any thought that contains this verse
+  const { data } = await sb
+    .from('thoughts')
+    .select('id, verse_refs, translation')
+    .filter('book_name', 'eq', bookName)
+    .filter('chapter', 'eq', chapter);
+
+  if (!data || data.length === 0) return;
+  // Find one that includes this verse
+  const match = data.find(t =>
+    Array.isArray(t.verse_refs) && t.verse_refs.some(r => r.verse === verseNum)
+  );
+  if (!match) return;
+  const ref = bookName + ' ' + chapter + ':' + verseNum + ' · ' + match.translation;
+  openThoughtComments(match.id, ref);
+}
+
+function closeCommentsPanel() {
+  document.getElementById('commentsOverlay').classList.remove('open');
+  activeThoughtId = null;
+}
+
+function handleCommentsOverlayClick(e) {
+  if (e.target === document.getElementById('commentsOverlay')) closeCommentsPanel();
+}
+
+async function loadComments(thoughtId) {
+  document.getElementById('commentsList').innerHTML =
+    '<div class="state-msg"><div class="loading-dots"><span></span><span></span><span></span></div></div>';
+
+  const { data, error } = await sb
+    .from('thought_comments')
+    .select('*, profiles(first_name, last_name)')
+    .eq('thought_id', thoughtId)
+    .is('parent_id', null)
+    .order('created_at', { ascending: true });
+
+  if (error || !data) {
+    document.getElementById('commentsList').innerHTML = '<p style="color:var(--text-muted);padding:16px;font-size:0.8rem">Could not load comments.</p>';
+    return;
+  }
+
+  if (data.length === 0) {
+    document.getElementById('commentsList').innerHTML =
+      '<div style="text-align:center;padding:40px 16px;color:var(--text-dim)"><p style="font-family:Cormorant Garamond,serif;font-style:italic;font-size:1rem">No replies yet — be the first!</p></div>';
+    return;
+  }
+
+  // Load replies for each comment
+  const { data: replies } = await sb
+    .from('thought_comments')
+    .select('*, profiles(first_name, last_name)')
+    .eq('thought_id', thoughtId)
+    .not('parent_id', 'is', null)
+    .order('created_at', { ascending: true });
+
+  const replyMap = {};
+  (replies || []).forEach(r => {
+    if (!replyMap[r.parent_id]) replyMap[r.parent_id] = [];
+    replyMap[r.parent_id].push(r);
+  });
+
+  document.getElementById('commentsList').innerHTML = data.map(c => renderComment(c, replyMap[c.id] || [])).join('');
+}
+
+function formatCommentDate(iso) {
+  return new Date(iso).toLocaleDateString('en-US', { month: 'short', day: 'numeric' });
+}
+
+function renderComment(c, replies) {
+  const profile = c.profiles;
+  const name = profile ? profile.first_name + ' ' + profile.last_name : 'Anonymous';
+  const initials = profile
+    ? (profile.first_name.charAt(0) + profile.last_name.charAt(0)).toUpperCase()
+    : '?';
+
+  const repliesHtml = replies.length
+    ? '<div class="comment-replies">' + replies.map(r => renderComment(r, [])).join('') + '</div>'
+    : '';
+
+  return `<div class="comment-item" id="comment-${c.id}">
+    <div class="comment-meta">
+      <div class="comment-avatar">${initials}</div>
+      <span class="comment-author">${name}</span>
+      <span class="comment-date">${formatCommentDate(c.created_at)}</span>
+    </div>
+    <div class="comment-body">${c.comment_text}</div>
+    <button class="comment-reply-link" onclick="startReply('${c.id}', '${name.replace(/'/g,"\'")}')">↳ REPLY</button>
+    ${repliesHtml}
+  </div>`;
+}
+
+function startReply(parentId, authorName) {
+  replyingToId = parentId;
+  const box = document.getElementById('commentReplyBox');
+  let replyTo = box.querySelector('.comment-reply-to');
+  if (!replyTo) {
+    replyTo = document.createElement('div');
+    replyTo.className = 'comment-reply-to';
+    box.insertBefore(replyTo, box.firstChild);
+  }
+  replyTo.textContent = 'Replying to ' + authorName;
+  document.getElementById('cancelReplyBtn').style.display = 'inline-flex';
+  document.getElementById('commentReplyText').focus();
+  // Scroll box into view
+  document.getElementById('commentReplyText').scrollIntoView({ behavior: 'smooth', block: 'nearest' });
+}
+
+function cancelReply() {
+  replyingToId = null;
+  document.getElementById('cancelReplyBtn').style.display = 'none';
+  const replyTo = document.getElementById('commentReplyBox').querySelector('.comment-reply-to');
+  if (replyTo) replyTo.remove();
+}
+
+async function submitComment() {
+  if (!currentUser || !activeThoughtId) return;
+  const text = document.getElementById('commentReplyText').value.trim();
+  if (!text) return;
+
+  const btn = document.getElementById('commentReplyBox').querySelector('.auth-submit');
+  btn.disabled = true; btn.textContent = 'POSTING…';
+
+  const payload = {
+    thought_id: activeThoughtId,
+    user_id: currentUser.id,
+    comment_text: text,
+    parent_id: replyingToId || null
+  };
+
+  const { error } = await sb.from('thought_comments').insert(payload);
+
+  btn.disabled = false; btn.textContent = 'POST';
+
+  if (error) {
+    const msg = document.getElementById('commentMsg');
+    msg.className = 'auth-msg error'; msg.textContent = 'Could not post. Try again.';
+    setTimeout(() => { msg.className = 'auth-msg'; msg.textContent = ''; }, 3000);
+  } else {
+    document.getElementById('commentReplyText').value = '';
+    cancelReply();
+    await loadComments(activeThoughtId);
+  }
+}
+
+// ── Mark verses with existing thoughts ──
+async function markVersesWithThoughts(bookName, chapter) {
+  if (!currentUser) return;
+  const { data } = await sb
+    .from('thoughts')
+    .select('verse_refs')
+    .eq('book_name', bookName)
+    .eq('chapter', chapter);
+
+  if (!data || data.length === 0) return;
+
+  const versesWithThoughts = new Set();
+  data.forEach(t => {
+    if (Array.isArray(t.verse_refs)) {
+      t.verse_refs.forEach(r => versesWithThoughts.add(r.verse));
+    }
+  });
+
+  versesWithThoughts.forEach(verseNum => {
+    const el = document.getElementById('v' + verseNum);
+    if (el) {
+      el.classList.add('has-comments');
+      // Ensure the see-thoughts button is in the row
+      if (!el.querySelector('.verse-see-thoughts')) {
+        const btn = document.createElement('button');
+        btn.className = 'verse-see-thoughts';
+        btn.textContent = '✦ SEE THOUGHTS';
+        btn.onclick = (e) => {
+          e.stopPropagation();
+          openVerseComments(bookName, chapter, verseNum);
+        };
+        el.appendChild(btn);
+      }
+    }
+  });
 }
 </script>
 </body>
