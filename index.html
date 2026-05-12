@@ -1519,8 +1519,6 @@ function initState() {
   }
 }
 
-initState();
-
 // Close dropdown on outside click
 document.addEventListener('click', e => {
   if (!document.getElementById('transWrap').contains(e.target)) closeTransDropdown();
@@ -1962,20 +1960,32 @@ function updateAuthUI(user, profile) {
   }
 }
 
-// Listen for auth state changes
-sb.auth.onAuthStateChange(async (_event, session) => {
+// Listen for auth state changes — also fires on refresh when token is restored
+sb.auth.onAuthStateChange(async (event, session) => {
   const user = session?.user ?? null;
   const profile = user ? await loadProfile(user) : null;
   updateAuthUI(user, profile);
+
+  // Re-mark verse indicators whenever auth state resolves and a chapter is showing
+  if (user && currentBook) {
+    setTimeout(() => markVersesWithThoughts(currentBook.name, currentChapter), 200);
+  }
 });
 
-// Init: check current session
+// Init: check current session first, THEN init the rest of the app
 (async () => {
   const { data } = await sb.auth.getSession();
   const user = data.session?.user ?? null;
   const profile = user ? await loadProfile(user) : null;
   updateAuthUI(user, profile);
-  document.getElementById('signInBtn').style.display = currentUser ? 'none' : 'flex';
+
+  // Now that auth is known, init reading state and re-mark verses if a chapter is already loaded
+  initState();
+
+  // If a chapter is already loaded in the DOM and user is signed in, mark verse indicators
+  if (currentUser && currentBook) {
+    setTimeout(() => markVersesWithThoughts(currentBook.name, currentChapter), 400);
+  }
 })();
 
 // ── Auth Modal ──
@@ -2246,14 +2256,17 @@ async function submitThought() {
     showAuthMsg('thoughtMsg', 'error', 'Could not post. Please try again.');
     console.error(error);
   } else {
-    // Tag each verse as having comments
-    sorted.forEach(v => {
-      const el = document.getElementById('v' + v.verseNum);
-      if (el) el.classList.add('has-comments');
-    });
     closeThoughtComposer();
     clearSelection();
     showCopiedToast();
+    // Re-run markVersesWithThoughts so the verse gets the "SEE THOUGHTS" button
+    if (currentBook) {
+      markVersesWithThoughts(currentBook.name, currentChapter);
+    }
+    // Refresh community feed if it's currently visible
+    if (currentMainTab === 'community') {
+      loadCommunityFeed();
+    }
   }
 }
 
